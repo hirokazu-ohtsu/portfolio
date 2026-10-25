@@ -2,6 +2,9 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { SITE } from '../site';
 import { TOOLS } from '../tools';
+import { formatDate, getPublishedPosts } from '../lib/posts';
+
+const posts = (await getPublishedPosts()).slice(0, 5);
 ---
 
 <BaseLayout title={SITE.name}>
@@ -28,5 +31,24 @@ import { TOOLS } from '../tools';
         ))}
       </ul>
     </section>
+
+    {posts.length > 0 && (
+      <section class="mt-12">
+        <div class="flex items-baseline justify-between">
+          <h2 class="text-lg font-bold">新着記事</h2>
+          <a href="/blog/" class="text-sm text-indigo-600 underline">すべて見る</a>
+        </div>
+        <ul class="mt-4 space-y-3">
+          {posts.map((post) => (
+            <li>
+              <a href={`/blog/${post.id}/`} class="block rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:ring-indigo-300">
+                <time class="text-xs text-slate-500" datetime={post.data.pubDate.toISOString()}>{formatDate(post.data.pubDate)}</time>
+                <p class="mt-1 font-semibold leading-snug">{post.data.title}</p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
   </main>
 </BaseLayout>

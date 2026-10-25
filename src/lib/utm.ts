@@ -1,4 +1,5 @@
 // UTMビルダーの中核ロジック。DOMに依存しないので単体テストできる。
+import { SEARCH_SOURCES, SHOPPING_SOURCES, SOCIAL_SOURCES, VIDEO_SOURCES } from './ga4-source-categories';
 
 export type UtmKey =
   | 'utm_source'
@@ -88,33 +89,24 @@ export function buildUrl(baseUrl: string, params: UtmParams): BuildResult {
 
 // ---------------------------------------------------------------
 // GA4 デフォルト チャネル グループの判定（目安）
-// 公式ルール https://support.google.com/analytics/answer/9756891 を簡略化。
-// 参照元カテゴリ（検索サイト・SNSなど）の一覧はGoogleの完全なリストではなく、
-// 日本でよく使う代表的なものだけを入れている。
+// 公式ルール https://support.google.com/analytics/answer/9756891 を実装。
+// 参照元カテゴリはGoogle公式の一覧（ga4-source-categories.ts）を使う。
+// GA4は上から順に評価し、最初に当てはまったチャネルに分類する。
 // ---------------------------------------------------------------
-
-const SEARCH_SOURCES = [
-  'google', 'yahoo', 'bing', 'baidu', 'duckduckgo', 'naver', 'yandex', 'ecosia',
-  'search.yahoo.co.jp', 'yahoo.co.jp', 'google.com', 'google.co.jp', 'bing.com',
-];
-const SOCIAL_SOURCES = [
-  'facebook', 'fb', 'instagram', 'ig', 'twitter', 'x', 't.co', 'x.com', 'line',
-  'linkedin', 'pinterest', 'threads', 'tiktok', 'note', 'note.com', 'reddit',
-  'facebook.com', 'm.facebook.com', 'l.facebook.com', 'instagram.com', 'linkedin.com',
-  'lnkd.in', 'pinterest.com', 'threads.net', 'tiktok.com', 'twitter.com', 'hatena',
-  'b.hatena.ne.jp', 'mixi', 'qiita', 'zenn',
-];
-const VIDEO_SOURCES = ['youtube', 'youtube.com', 'm.youtube.com', 'vimeo', 'vimeo.com', 'nicovideo', 'nicovideo.jp'];
-const SHOPPING_SOURCES = [
-  'google shopping', 'shopping', 'amazon', 'amazon.co.jp', 'rakuten', 'rakuten.co.jp',
-  'shopify', 'yahoo shopping', 'shopping.yahoo.co.jp', 'mercari', 'etsy', 'ebay',
-];
 
 const PAID_MEDIUM = /^(.*cp.*|ppc|retargeting|paid.*)$/;
 const SHOP_CAMPAIGN = /^(.*(([^a-df-z]|^)shop|shopping).*)$/;
 const SOCIAL_MEDIUMS = ['social', 'social-network', 'social-media', 'sm', 'social network', 'social media'];
 const EMAIL_VALUES = ['email', 'e-mail', 'e_mail', 'e mail'];
 const DISPLAY_MEDIUMS = ['display', 'banner', 'expandable', 'interstitial', 'cpm'];
+
+// よく使われるのにGoogleの一覧に入っていない参照元と、代わりの値
+const UNLISTED_SOCIAL_HINTS: Record<string, string> = {
+  'x': 'X広告なら一覧にある twitter を使いましょう',
+  'x.com': 'X広告なら一覧にある twitter を使いましょう',
+  'threads': 'Threads広告はMeta広告の配信面なので facebook / instagram を使いましょう',
+  'threads.net': 'Threads広告はMeta広告の配信面なので facebook / instagram を使いましょう',
+};
 
 export type Channel =
   | 'Cross-network'
@@ -162,10 +154,10 @@ export function predictChannel(params: UtmParams): Channel {
   const medium = (params.utm_medium ?? '').toLowerCase();
   const campaign = (params.utm_campaign ?? '').toLowerCase();
 
-  const isSearch = SEARCH_SOURCES.includes(source);
-  const isSocial = SOCIAL_SOURCES.includes(source);
-  const isVideo = VIDEO_SOURCES.includes(source);
-  const isShopping = SHOPPING_SOURCES.includes(source) || SHOP_CAMPAIGN.test(campaign);
+  const isSearch = SEARCH_SOURCES.has(source);
+  const isSocial = SOCIAL_SOURCES.has(source);
+  const isVideo = VIDEO_SOURCES.has(source);
+  const isShopping = SHOPPING_SOURCES.has(source) || SHOP_CAMPAIGN.test(campaign);
   const isPaid = PAID_MEDIUM.test(medium);
 
   if (campaign.includes('cross-network')) return 'Cross-network';
@@ -233,6 +225,21 @@ export function checkIssues(baseUrl: string, raw: UtmParams, normalized: UtmPara
   if (medium === 'mail' || medium === 'newsletter' || medium === 'mailmagazine' || medium === 'mailmaga') {
     issues.push({ severity: 'warn', message: `utm_medium=${medium} は「メール」チャネルになりません。email を使いましょう` });
   }
+  if (source && EMAIL_VALUES.includes(medium) && SOCIAL_SOURCES.has(source)) {
+    issues.push({
+      severity: 'warn',
+      message: `utm_source=${source} はGoogleの参照元一覧で「ソーシャル」扱いのため、medium=${medium} でも「メール」ではなく「オーガニック ソーシャル」に分類されます。メールとして集計したい場合は source を一覧にない値（例: ${source}_oa）にしてください`,
+    });
+  }
+  if (source && PAID_MEDIUM.test(medium) && predictChannel(normalized) === 'Paid Other') {
+    const hint = UNLISTED_SOCIAL_HINTS[source];
+    issues.push({
+      severity: 'warn',
+      message: hint
+        ? `utm_source=${source} はGoogleの参照元一覧にないため、「有料ソーシャル」ではなく「その他の有料」に分類されます。${hint}`
+        : `utm_source=${source} はGoogleの参照元一覧（検索・ソーシャル・動画・ショッピング）にないため、「その他の有料」に分類されます`,
+    });
+  }
   if (medium === 'qr' || medium === 'qrcode' || medium === 'offline' || medium === 'print') {
     issues.push({
       severity: 'info',
@@ -277,10 +284,10 @@ export interface Preset {
 
 export const PRESETS: Preset[] = [
   { id: 'x-organic', label: 'X（通常投稿）', params: { utm_source: 'x', utm_medium: 'social' } },
-  { id: 'x-ads', label: 'X広告', params: { utm_source: 'x', utm_medium: 'paid_social' } },
+  { id: 'x-ads', label: 'X広告', params: { utm_source: 'twitter', utm_medium: 'paid_social' }, note: 'x はGoogleの参照元一覧にないため、広告は twitter にしないと「その他の有料」になります' },
   { id: 'meta-ads', label: 'Meta広告（Facebook/Instagram）', params: { utm_source: 'facebook', utm_medium: 'paid_social' }, note: 'Instagram配信を分けたい場合は utm_source=instagram に' },
   { id: 'instagram', label: 'Instagram（通常投稿・プロフィール）', params: { utm_source: 'instagram', utm_medium: 'social' } },
-  { id: 'line', label: 'LINE公式アカウント', params: { utm_source: 'line', utm_medium: 'social' }, note: '配信をメール同様に扱いたい場合は utm_medium=email でも可。社内でどちらかに統一を' },
+  { id: 'line', label: 'LINE公式アカウント（メッセージ配信）', params: { utm_source: 'line_oa', utm_medium: 'email' }, note: 'source を line にすると、medium=email でも「オーガニック ソーシャル」になります。配信をメールとして集計するため line_oa にしています' },
   { id: 'note', label: 'note記事内リンク', params: { utm_source: 'note', utm_medium: 'social' } },
   { id: 'email', label: 'メルマガ', params: { utm_source: 'newsletter', utm_medium: 'email' } },
   { id: 'yahoo-display', label: 'Yahoo!広告 ディスプレイ', params: { utm_source: 'yahoo', utm_medium: 'display' } },
