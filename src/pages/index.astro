@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../site';
+import { TOOLS } from '../tools';
+---
+
+<BaseLayout title={SITE.name}>
+  <main class="mx-auto max-w-3xl px-4 py-12">
+    <section>
+      <p class="text-sm font-semibold text-indigo-600">Webマーケ × データ計測</p>
+      <h1 class="mt-2 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">計測の「つまずき」を、<br />実装までまとめて解決する</h1>
+      <p class="mt-4 leading-relaxed text-slate-600">
+        GTM・GA4・BigQuery・Looker Studio、CRM（CleverTap・Lステップ）の実務で得たノウハウと、
+        現場でそのまま使える無料ツールを公開しています。
+      </p>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-lg font-bold">無料ツール</h2>
+      <ul class="mt-4 grid gap-4 sm:grid-cols-2">
+        {TOOLS.map((t) => (
+          <li>
+            <a href={t.href} class="block h-full rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:ring-indigo-300">
+              <p class="font-semibold">{t.name}</p>
+              <p class="mt-1 text-sm leading-relaxed text-slate-600">{t.summary}</p>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </main>
+</BaseLayout>

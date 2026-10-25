@@ -1,0 +1,306 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { PRESETS } from '../../lib/utm';
+
+const title = 'UTMビルダー（GA4のチャネル判定つき）';
+const description =
+  'URLにUTMパラメータを付ける無料ツール。GA4のデフォルトチャネルグループでどう分類されるかをその場で確認でき、medium=sns などのよくあるミスも警告します。';
+
+const optionalFields = [
+  { key: 'utm_id', label: 'utm_id', hint: 'キャンペーンID（GA4のコスト連携やデータインポートで使用）' },
+  { key: 'utm_term', label: 'utm_term', hint: '検索キーワードなど' },
+  { key: 'utm_content', label: 'utm_content', hint: 'クリエイティブや配置の区別（例: banner_a）' },
+  { key: 'utm_source_platform', label: 'utm_source_platform', hint: '買い付けプラットフォーム（例: dv360）' },
+  { key: 'utm_creative_format', label: 'utm_creative_format', hint: 'クリエイティブ形式（例: video）' },
+  { key: 'utm_marketing_tactic', label: 'utm_marketing_tactic', hint: '施策（例: remarketing）' },
+];
+---
+
+<BaseLayout title={title} description={description}>
+    <main class="mx-auto max-w-3xl px-4 py-10">
+      <header class="mb-8">
+        <p class="text-sm font-semibold text-indigo-600">無料ツール</p>
+        <h1 class="mt-1 text-3xl font-bold tracking-tight">UTMビルダー</h1>
+        <p class="mt-3 leading-relaxed text-slate-600">
+          URLにUTMパラメータを付けて、<strong>GA4でどのチャネルに分類されるか</strong>をその場で確認できます。
+          入力内容はブラウザの中だけで処理され、どこにも送信されません。
+        </p>
+      </header>
+
+      <form id="utm-form" class="space-y-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200" novalidate>
+        <div>
+          <label for="base_url" class="block text-sm font-semibold">リンク先URL <span class="text-rose-600">*</span></label>
+          <input id="base_url" name="base_url" type="url" inputmode="url" autocomplete="off" placeholder="https://example.com/lp"
+            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+        </div>
+
+        <div>
+          <label for="preset" class="block text-sm font-semibold">よく使う組み合わせ</label>
+          <select id="preset" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+            <option value="">選ぶと source / medium が入ります</option>
+            {PRESETS.map((p) => <option value={p.id}>{p.label}</option>)}
+          </select>
+          <p id="preset-note" class="mt-1 hidden text-xs text-slate-500"></p>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label for="utm_source" class="block text-sm font-semibold">utm_source <span class="text-rose-600">*</span></label>
+            <input id="utm_source" name="utm_source" placeholder="x / google / newsletter" autocomplete="off"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            <p class="mt-1 text-xs text-slate-500">流入元（媒体名）</p>
+          </div>
+          <div>
+            <label for="utm_medium" class="block text-sm font-semibold">utm_medium <span class="text-rose-600">*</span></label>
+            <input id="utm_medium" name="utm_medium" placeholder="social / cpc / email" autocomplete="off" list="medium-list"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            <datalist id="medium-list">
+              <option value="social"></option>
+              <option value="paid_social"></option>
+              <option value="cpc"></option>
+              <option value="display"></option>
+              <option value="email"></option>
+              <option value="affiliate"></option>
+              <option value="referral"></option>
+              <option value="sms"></option>
+            </datalist>
+            <p class="mt-1 text-xs text-slate-500">流入の種類（チャネル判定の要）</p>
+          </div>
+          <div>
+            <label for="utm_campaign" class="block text-sm font-semibold">utm_campaign <span class="text-rose-600">*</span></label>
+            <input id="utm_campaign" name="utm_campaign" placeholder="2026_spring_sale" autocomplete="off"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            <p class="mt-1 text-xs text-slate-500">キャンペーン名</p>
+          </div>
+        </div>
+
+        <details class="group rounded-lg border border-slate-200 p-4">
+          <summary class="cursor-pointer text-sm font-semibold text-slate-700">任意のパラメータ（utm_id / term / content ほか）</summary>
+          <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            {optionalFields.map((f) => (
+              <div>
+                <label for={f.key} class="block text-sm font-semibold">{f.label}</label>
+                <input id={f.key} name={f.key} autocomplete="off"
+                  class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                <p class="mt-1 text-xs text-slate-500">{f.hint}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+
+        <fieldset class="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          <legend class="sr-only">表記ルール</legend>
+          <label class="inline-flex items-center gap-2"><input id="opt_lower" type="checkbox" checked class="h-4 w-4 accent-indigo-600" />小文字にそろえる</label>
+          <label class="inline-flex items-center gap-2">
+            空白を
+            <select id="opt_space" class="rounded border border-slate-300 bg-white px-2 py-1">
+              <option value="_" selected>_ に置き換え</option>
+              <option value="-">- に置き換え</option>
+              <option value="">そのまま</option>
+            </select>
+          </label>
+        </fieldset>
+      </form>
+
+      <section class="mt-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200" aria-live="polite">
+        <h2 class="text-sm font-semibold text-slate-500">生成されたURL</h2>
+        <p id="result-url" class="mt-2 min-h-[3rem] break-all rounded-lg bg-slate-100 p-3 font-mono text-sm text-slate-400">URLと必須項目を入れるとここに表示されます</p>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <button id="copy-btn" type="button" disabled
+            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">コピー</button>
+          <button id="reset-btn" type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50">クリア</button>
+          <span id="copy-status" class="text-sm text-emerald-600"></span>
+        </div>
+
+        <div class="mt-6 border-t border-slate-100 pt-4">
+          <h2 class="text-sm font-semibold text-slate-500">GA4での分類（デフォルト チャネル グループの目安）</h2>
+          <p id="channel" class="mt-1 text-lg font-bold">―</p>
+        </div>
+
+        <ul id="issues" class="mt-4 space-y-2 text-sm"></ul>
+      </section>
+
+      <section class="mt-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-500">最近コピーしたURL（このブラウザにのみ保存）</h2>
+          <button id="history-clear" type="button" class="text-xs text-slate-500 underline hover:text-slate-700">履歴を消す</button>
+        </div>
+        <ul id="history" class="mt-3 space-y-2 text-sm"><li class="text-slate-400">まだありません</li></ul>
+      </section>
+
+      <p class="mt-6 text-xs leading-relaxed text-slate-500">
+        チャネルの判定は Google の
+        <a class="underline" href="https://support.google.com/analytics/answer/9756891" target="_blank" rel="noopener">デフォルト チャネル グループの定義</a>
+        をもとにした目安です。参照元の一覧は代表的なものだけを入れているため、実際の分類と異なる場合があります。
+      </p>
+    </main>
+
+    <script>
+      import {
+        buildUrl, checkIssues, normalizeParams, predictChannel, CHANNEL_LABELS_JA, PRESETS, UTM_KEYS,
+        type NormalizeOptions, type UtmParams,
+      } from '../../lib/utm';
+
+      const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+      const form = $<HTMLFormElement>('utm-form');
+      const baseInput = $<HTMLInputElement>('base_url');
+      const presetSel = $<HTMLSelectElement>('preset');
+      const presetNote = $('preset-note');
+      const optLower = $<HTMLInputElement>('opt_lower');
+      const optSpace = $<HTMLSelectElement>('opt_space');
+      const resultEl = $('result-url');
+      const copyBtn = $<HTMLButtonElement>('copy-btn');
+      const copyStatus = $('copy-status');
+      const channelEl = $('channel');
+      const issuesEl = $('issues');
+      const historyEl = $('history');
+
+      const HISTORY_KEY = 'utm-builder-history';
+      let currentUrl = '';
+
+      const readParams = (): UtmParams => {
+        const p: UtmParams = {};
+        for (const k of UTM_KEYS) {
+          const el = document.getElementById(k) as HTMLInputElement | null;
+          if (el) p[k] = el.value;
+        }
+        return p;
+      };
+      const readOptions = (): NormalizeOptions => ({
+        lowercase: optLower.checked,
+        spaceReplacement: (optSpace.value || null) as NormalizeOptions['spaceReplacement'],
+      });
+
+      const SEVERITY_STYLE = {
+        error: 'bg-rose-50 text-rose-700 ring-rose-200',
+        warn: 'bg-amber-50 text-amber-800 ring-amber-200',
+        info: 'bg-sky-50 text-sky-800 ring-sky-200',
+      } as const;
+      const SEVERITY_LABEL = { error: '必須', warn: '注意', info: 'メモ' } as const;
+
+      function render() {
+        const raw = readParams();
+        const params = normalizeParams(raw, readOptions());
+        const issues = checkIssues(baseInput.value, raw, params);
+        const hasRequired = !!(params.utm_source && params.utm_medium && params.utm_campaign);
+        const built = buildUrl(baseInput.value, params);
+
+        if (built.ok && hasRequired) {
+          currentUrl = built.url;
+          resultEl.textContent = built.url;
+          resultEl.classList.replace('text-slate-400', 'text-slate-800');
+          copyBtn.disabled = false;
+        } else {
+          currentUrl = '';
+          resultEl.textContent = baseInput.value.trim() && !built.ok ? built.error : 'URLと必須項目を入れるとここに表示されます';
+          resultEl.classList.replace('text-slate-800', 'text-slate-400');
+          copyBtn.disabled = true;
+        }
+
+        channelEl.textContent = params.utm_source || params.utm_medium ? CHANNEL_LABELS_JA[predictChannel(params)] : '―';
+
+        // 何も入力していない段階では「必須です」を出さない
+        const touched = Object.values(raw).some((v) => v && v.trim());
+        const visible = touched ? issues : [];
+        issuesEl.replaceChildren(
+          ...visible.map((i) => {
+            const li = document.createElement('li');
+            li.className = `flex gap-2 rounded-lg px-3 py-2 ring-1 ${SEVERITY_STYLE[i.severity]}`;
+            const tag = document.createElement('span');
+            tag.className = 'shrink-0 font-semibold';
+            tag.textContent = SEVERITY_LABEL[i.severity];
+            const msg = document.createElement('span');
+            msg.textContent = i.message;
+            li.append(tag, msg);
+            return li;
+          }),
+        );
+      }
+
+      function loadHistory(): string[] {
+        try {
+          const v = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]');
+          return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+        } catch {
+          return [];
+        }
+      }
+      function saveHistory(list: string[]) {
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch { /* 保存できない環境では何もしない */ }
+      }
+      function renderHistory() {
+        const list = loadHistory();
+        if (!list.length) {
+          historyEl.innerHTML = '<li class="text-slate-400">まだありません</li>';
+          return;
+        }
+        historyEl.replaceChildren(
+          ...list.map((url) => {
+            const li = document.createElement('li');
+            li.className = 'flex items-start gap-2';
+            const code = document.createElement('code');
+            code.className = 'flex-1 break-all rounded bg-slate-100 px-2 py-1 text-xs';
+            code.textContent = url;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'shrink-0 text-xs text-indigo-600 underline';
+            btn.textContent = 'コピー';
+            btn.addEventListener('click', () => copy(url));
+            li.append(code, btn);
+            return li;
+          }),
+        );
+      }
+
+      async function copy(text: string) {
+        try {
+          await navigator.clipboard.writeText(text);
+          copyStatus.textContent = 'コピーしました';
+        } catch {
+          copyStatus.textContent = 'コピーできませんでした。URLを選択してコピーしてください';
+        }
+        setTimeout(() => (copyStatus.textContent = ''), 2500);
+      }
+
+      form.addEventListener('input', render);
+      form.addEventListener('change', render);
+      form.addEventListener('submit', (e) => e.preventDefault());
+
+      presetSel.addEventListener('change', () => {
+        const preset = PRESETS.find((p) => p.id === presetSel.value);
+        if (!preset) {
+          presetNote.classList.add('hidden');
+          return;
+        }
+        for (const [k, v] of Object.entries(preset.params)) {
+          const el = document.getElementById(k) as HTMLInputElement | null;
+          if (el) el.value = v ?? '';
+        }
+        presetNote.textContent = preset.note ?? '';
+        presetNote.classList.toggle('hidden', !preset.note);
+        render();
+      });
+
+      copyBtn.addEventListener('click', async () => {
+        if (!currentUrl) return;
+        await copy(currentUrl);
+        const list = [currentUrl, ...loadHistory().filter((u) => u !== currentUrl)].slice(0, 10);
+        saveHistory(list);
+        renderHistory();
+      });
+
+      $('reset-btn').addEventListener('click', () => {
+        form.reset();
+        presetNote.classList.add('hidden');
+        render();
+      });
+
+      $('history-clear').addEventListener('click', () => {
+        saveHistory([]);
+        renderHistory();
+      });
+
+      render();
+      renderHistory();
+    </script>
+</BaseLayout>
