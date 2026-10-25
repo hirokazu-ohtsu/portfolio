@@ -27,9 +27,10 @@ src/
 tests/                 Vitest のテスト
 ```
 
-## Cloudflare Pages の設定
+## 公開（Cloudflare Workers）
 
-- フレームワーク: Astro
+GitHub と連携した Cloudflare Workers で配信する。`main` にマージすると本番に、ほかのブランチに push するとプレビューURLにデプロイされる。
+
 - ビルドコマンド: `npm run build`
-- 出力ディレクトリ: `dist`
-- 環境変数: `NODE_VERSION=22`（`.node-version` でも指定済み）
+- デプロイコマンド: `npx wrangler deploy`（設定は `wrangler.jsonc`。`dist/` を静的ファイルとして配信）
+- 手元で確認: `npm run build && npx wrangler deploy --dry-run`
