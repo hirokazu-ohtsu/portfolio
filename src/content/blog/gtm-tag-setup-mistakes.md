@@ -10,6 +10,8 @@ GTM（Googleタグマネージャー）でタグを設定して、プレビュ�
 
 選んだ媒体とイベントに合わせて確認項目を出せる無料ツール [GTMタグ設定チェックリスト生成](/tools/gtm-checklist/) も用意したので、設定のたびに使ってみてください。
 
+[![GTMの確認は設定前・設定中・公開前・公開後の4段階に分けると漏れにくい](/images/blog/gtm-tag-setup-mistakes/four-stages.svg)](/images/blog/gtm-tag-setup-mistakes/four-stages.svg)
+
 ## タグ・トリガーのミス
 
 ### 1. 同じイベントが複数回発火して、成果が二重に計上される
@@ -22,6 +24,8 @@ GTM（Googleタグマネージャー）でタグを設定して、プレビュ�
 ### 2. ボタンのクリックだけで成果を計測している
 
 問い合わせボタンのクリックをトリガーにすると、入力エラーで送信できなかった人まで成果に入ります。成果は「送信が成功したこと」で計測します。
+
+[![クリックで計測すると入力エラーの人も成果に入る。送信成功で計測する](/images/blog/gtm-tag-setup-mistakes/click-vs-submit.svg)](/images/blog/gtm-tag-setup-mistakes/click-vs-submit.svg)
 
 - **確認方法**：送信成功時に dataLayer.push されるイベント、または完了ページのURLがトリガーになっているか見る
 - **NG例**：必須項目が空のまま送信ボタンを押しただけで、成果が計上される
@@ -36,6 +40,8 @@ GTM（Googleタグマネージャー）でタグを設定して、プレビュ�
 ### 4. GTMとサイトへの直接埋め込みで、同じタグが重複する
 
 以前の担当者がサイトに直接書いたタグが残ったまま、GTMでも同じタグを入れてしまうケースです。ページビューも成果も2倍になります。
+
+[![直書きのgtag.jsとGTMのGA4タグが両方あるとpage_viewが2回送られる。GTMに一本化すると1回](/images/blog/gtm-tag-setup-mistakes/duplicate-tags.svg)](/images/blog/gtm-tag-setup-mistakes/duplicate-tags.svg)
 
 - **確認方法**：Tag Assistantでページを開き、同じ測定IDやピクセルIDのタグが2つ検出されていないか見る
 - **NG例**：GA4の page_view が1回の表示で2回送られている
@@ -69,6 +75,8 @@ GA4では、value を送るときは currency も必須です。transaction_id �
 
 サイトは `transactionId`、GTMの変数は `transaction_id` を読みにいく、といったずれです。値は undefined になり、エラーも出ないので気づきにくいミスです。
 
+[![dataLayerのキー名とGTMのデータレイヤー変数名が一致しないとundefinedになる](/images/blog/gtm-tag-setup-mistakes/datalayer-variables.svg)](/images/blog/gtm-tag-setup-mistakes/datalayer-variables.svg)
+
 - **確認方法**：プレビューの「Variables」タブで、変数に値が入っているか見る
 - **NG例**：`ecommerce.value` に入っている値を `value` で参照して、undefined になる
 
@@ -82,6 +90,8 @@ GA4では、value を送るときは currency も必須です。transaction_id �
 ### 10. Meta Pixel と Conversions API でイベントIDが一致していない
 
 Pixel（ブラウザ）と Conversions API（サーバー）の両方からイベントを送る場合、Metaは**イベントIDとイベント名の両方が一致**したものを重複として1件にまとめます。重複の除外は、最初のイベントを受け取ってから48時間以内に届いたものが対象です（[Meta for Developers](https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events)）。
+
+[![PixelとConversions APIでイベントIDとイベント名が一致すれば1件、IDが違うと2件として計上される](/images/blog/gtm-tag-setup-mistakes/meta-dedup.svg)](/images/blog/gtm-tag-setup-mistakes/meta-dedup.svg)
 
 - **確認方法**：イベントマネージャでブラウザとサーバーの両方のイベントが届き、重複が除かれているか見る
 - **NG例**：Pixel はランダムなID、サーバーは注文番号を event_id に使い、同じ購入が2件になる
