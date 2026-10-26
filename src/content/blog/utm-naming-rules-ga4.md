@@ -2,11 +2,14 @@
 title: UTMの命名ルールでGA4の「Unassigned」を防ぐ｜LINEとXの落とし穴つき
 description: utm_medium の表記ゆれや定義外の値で、GA4のチャネル別の数字は簡単に崩れます。現場で使っている命名ルールと、LINE・Xで起きやすい分類ミスを、GA4の判定ルールに沿って解説します。
 pubDate: 2026-10-25
+updatedDate: 2026-10-26
 ---
 
 広告やSNSのリンクにUTMを付けているのに、GA4のチャネル別レポートで「Unassigned（未割り当て）」が増えていく。原因をたどると、ほとんどがUTMの付け方の問題です。
 
 この記事では、実務でよく見る崩れ方と、それを防ぐための命名ルールをまとめます。後半では、LINE公式アカウントとXで特に間違えやすいポイントを、GA4の判定ルールに沿って説明します。
+
+[![UTMつきURLの構造。utm_sourceは流入元、utm_mediumは流入の種類、utm_campaignはキャンペーン名](/images/blog/utm-naming-rules-ga4/utm-anatomy.svg)](/images/blog/utm-naming-rules-ga4/utm-anatomy.svg)
 
 UTMを作るときは、GA4でどのチャネルに分類されるかをその場で確認できる無料ツール [UTMビルダー](/tools/utm-builder/) も使ってみてください。
 
@@ -48,6 +51,8 @@ LINE公式アカウントのメッセージ配信は、メルマガと同じ「�
 - Googleの参照元カテゴリ一覧（2026年10月時点）では、`line` は**ソーシャル**に分類されています
 - GA4は Organic Social を Email より先に判定します
 - そのため `utm_source=line&utm_medium=email` は **Organic Social** になります
+
+[![source=lineはOrganic Socialで確定しEmailの判定まで進まない。source=line_oaならEmailになる](/images/blog/utm-naming-rules-ga4/line-channel-order.svg)](/images/blog/utm-naming-rules-ga4/line-channel-order.svg)
 
 メールチャネルで集計したい場合は、source を一覧に無い値にします。
 
