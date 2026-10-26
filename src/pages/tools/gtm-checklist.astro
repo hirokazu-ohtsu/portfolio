@@ -1,0 +1,267 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { CONDITIONS, EVENTS, PLATFORMS, SOURCES, SOURCES_CHECKED_ON } from '../../lib/gtm-checklist';
+
+const title = 'GTMタグ設定チェックリスト生成（GA4・Google広告・Meta・Yahoo!・LINE）';
+const description =
+  '広告媒体と計測したいイベントを選ぶと、GTMのタグ設定で確認すべき項目を「設定前・設定中・公開前・公開後」の4段階で出す無料ツール。各項目に確認方法とよくあるNG例つき。';
+
+const [y, m, d] = SOURCES_CHECKED_ON.split('-').map(Number);
+const checkedOnJa = `${y}年${m}月${d}日`;
+
+const box = 'inline-flex items-start gap-2 rounded-lg px-3 py-2 ring-1 ring-slate-200 hover:bg-slate-50 cursor-pointer';
+---
+
+<BaseLayout title={title} description={description}>
+  <main class="mx-auto max-w-3xl px-4 py-10">
+    <header class="mb-8">
+      <p class="text-sm font-semibold text-indigo-600">無料ツール</p>
+      <h1 class="mt-1 text-3xl font-bold tracking-tight">GTMタグ設定チェックリスト生成</h1>
+      <p class="mt-3 leading-relaxed text-slate-600">
+        使う広告媒体と計測したいイベントを選ぶと、GTM（Googleタグマネージャー）の設定で確認すべき項目を
+        <strong>設定前・設定中・公開前・公開後</strong>の4段階で出します。各項目に「確認方法」と「よくあるNG例」つきです。
+        チェックの状態はこのブラウザにだけ保存され、どこにも送信されません。
+      </p>
+    </header>
+
+    <form id="gtm-form" class="space-y-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 print:hidden">
+      <fieldset>
+        <legend class="text-sm font-semibold">広告媒体・計測ツール</legend>
+        <div class="mt-2 flex flex-wrap gap-2">
+          {PLATFORMS.map((p) => (
+            <label class={box}><input type="checkbox" name="platforms" value={p.id} class="mt-1 h-4 w-4 accent-indigo-600" />{p.label}</label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="text-sm font-semibold">計測したいイベント</legend>
+        <div class="mt-2 grid gap-2 sm:grid-cols-2">
+          {EVENTS.map((e) => (
+            <label class={box}>
+              <input type="checkbox" name="events" value={e.id} class="mt-1 h-4 w-4 accent-indigo-600" />
+              <span>{e.label}<span class="block text-xs text-slate-500">{e.hint}</span></span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="text-sm font-semibold">サイトの条件（当てはまるものだけ）</legend>
+        <div class="mt-2 grid gap-2">
+          {CONDITIONS.map((c) => (
+            <label class={box}>
+              <input type="checkbox" name="conditions" value={c.id} class="mt-1 h-4 w-4 accent-indigo-600" />
+              <span>{c.label}<span class="block text-xs text-slate-500">{c.hint}</span></span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </form>
+
+    <section class="mt-6" aria-live="polite">
+      <div class="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 print:hidden">
+        <div class="min-w-[10rem] flex-1">
+          <p class="text-sm font-semibold text-slate-500">進み具合</p>
+          <p id="progress-text" class="text-lg font-bold">―</p>
+          <div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div id="progress-bar" class="h-full w-0 bg-indigo-600 transition-all"></div>
+          </div>
+        </div>
+        <button id="copy-btn" type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">Markdownでコピー</button>
+        <button id="print-btn" type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50">印刷</button>
+        <button id="reset-btn" type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50">チェックを外す</button>
+        <span id="copy-status" class="w-full text-sm text-emerald-600 empty:hidden"></span>
+      </div>
+
+      <div id="checklist" class="mt-6 space-y-8"></div>
+    </section>
+
+    <a href="/blog/gtm-tag-setup-mistakes/" class="mt-10 block rounded-2xl bg-indigo-50 p-5 ring-1 ring-indigo-100 transition hover:ring-indigo-300 print:hidden">
+      <p class="text-xs font-semibold text-indigo-600">解説記事</p>
+      <p class="mt-1 font-semibold">GTMのタグ設定でよくあるミス16選｜二重計上・金額の型・同意管理まで</p>
+    </a>
+
+    <section class="mt-6 rounded-2xl bg-slate-100 p-5 ring-1 ring-slate-200 print:hidden">
+      <p class="text-xs font-semibold text-slate-500">準備中</p>
+      <p class="mt-1 font-semibold">広告媒体別 GTMタグ設定ガイド</p>
+      <p class="mt-1 text-sm leading-relaxed text-slate-600">
+        このチェックリストは「設定漏れを防ぐ」ためのものです。媒体ごとの具体的な設定画面、変数・トリガーの設定例、うまく計測できないときの解決方法をまとめたガイドを準備しています。
+      </p>
+    </section>
+
+    <section class="mt-6 text-xs leading-relaxed text-slate-500">
+      <p>
+        各項目は実務でよく見る設定ミスをもとにまとめ、媒体やGA4の仕様は次の公式ドキュメントで確認しています（{checkedOnJa}時点）。
+        管理画面の名称や仕様は変わることがあるので、設定時は各公式ヘルプもあわせて確認してください。
+      </p>
+      <ul class="mt-2 list-disc space-y-1 pl-5">
+        {SOURCES.map((s) => (
+          <li><a class="underline" href={s.url} target="_blank" rel="noopener">{s.title}</a></li>
+        ))}
+      </ul>
+    </section>
+  </main>
+
+  <script>
+    import { generateChecklist, PLATFORMS, sanitizeSelection, toMarkdown, type ChecklistSection, type Selection } from '../../lib/gtm-checklist';
+
+    const STORAGE_KEY = 'gtm-checklist-state';
+    const DEFAULT_SELECTION: Selection = { platforms: ['ga4', 'google_ads'], events: ['page_view', 'lead'], conditions: [] };
+
+    const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+    const form = $<HTMLFormElement>('gtm-form');
+    const listEl = $('checklist');
+    const progressText = $('progress-text');
+    const progressBar = $('progress-bar');
+    const copyBtn = $<HTMLButtonElement>('copy-btn');
+    const copyStatus = $('copy-status');
+
+    const platformLabel = new Map(PLATFORMS.map((p) => [p.id, p.label]));
+
+    let checked = new Set<string>();
+    let sections: ChecklistSection[] = [];
+
+    function load(): { selection: Selection; checked: string[] } {
+      try {
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
+        if (raw && typeof raw === 'object') {
+          return {
+            selection: sanitizeSelection(raw.selection),
+            checked: Array.isArray(raw.checked) ? raw.checked.filter((x: unknown) => typeof x === 'string') : [],
+          };
+        }
+      } catch { /* 読めないときは初期値 */ }
+      return { selection: DEFAULT_SELECTION, checked: [] };
+    }
+    function save() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ selection: readSelection(), checked: [...checked] }));
+      } catch { /* 保存できない環境では何もしない */ }
+    }
+
+    const readSelection = (): Selection =>
+      sanitizeSelection({
+        platforms: [...form.querySelectorAll<HTMLInputElement>('input[name="platforms"]:checked')].map((i) => i.value),
+        events: [...form.querySelectorAll<HTMLInputElement>('input[name="events"]:checked')].map((i) => i.value),
+        conditions: [...form.querySelectorAll<HTMLInputElement>('input[name="conditions"]:checked')].map((i) => i.value),
+      });
+
+    function applySelection(sel: Selection) {
+      for (const input of form.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
+        const list = sel[input.name as keyof Selection] as string[];
+        input.checked = list.includes(input.value);
+      }
+    }
+
+    function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string) {
+      const e = document.createElement(tag);
+      e.className = className;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    function updateProgress() {
+      const all = sections.flatMap((s) => s.items);
+      const done = all.filter((i) => checked.has(i.id)).length;
+      progressText.textContent = all.length ? `${done} / ${all.length} 項目` : '―';
+      progressBar.style.width = all.length ? `${Math.round((done / all.length) * 100)}%` : '0';
+      copyBtn.disabled = all.length === 0;
+      for (const s of sections) {
+        const counter = document.getElementById(`count-${s.stage}`);
+        if (counter) counter.textContent = `${s.items.filter((i) => checked.has(i.id)).length} / ${s.items.length}`;
+      }
+    }
+
+    function render() {
+      const sel = readSelection();
+      sections = generateChecklist(sel);
+
+      if (!sections.length) {
+        listEl.replaceChildren(el('p', 'rounded-2xl bg-white p-6 text-slate-500 shadow-sm ring-1 ring-slate-200', '媒体とイベントをそれぞれ1つ以上選ぶと、チェックリストが表示されます。'));
+        updateProgress();
+        return;
+      }
+
+      listEl.replaceChildren(
+        ...sections.map((s, idx) => {
+          const sec = el('section', 'break-inside-avoid-page');
+          const head = el('div', 'flex items-baseline justify-between gap-3 border-b border-slate-200 pb-2');
+          const h2 = el('h2', 'text-xl font-bold', `${idx + 1}. ${s.label}`);
+          h2.append(el('span', 'ml-2 text-sm font-normal text-slate-500', s.summary));
+          const count = el('span', 'text-sm text-slate-500');
+          count.id = `count-${s.stage}`;
+          head.append(h2, count);
+
+          const ul = el('ul', 'mt-3 space-y-3');
+          for (const item of s.items) {
+            const li = el('li', 'rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 break-inside-avoid');
+            const label = el('label', 'flex cursor-pointer items-start gap-3');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'mt-1 h-5 w-5 shrink-0 accent-indigo-600';
+            cb.checked = checked.has(item.id);
+            cb.addEventListener('change', () => {
+              if (cb.checked) checked.add(item.id); else checked.delete(item.id);
+              title.classList.toggle('line-through', cb.checked);
+              title.classList.toggle('text-slate-400', cb.checked);
+              save();
+              updateProgress();
+            });
+            const title = el('span', 'font-semibold leading-snug', item.title);
+            if (cb.checked) title.classList.add('line-through', 'text-slate-400');
+            const titleWrap = el('span', 'flex-1');
+            titleWrap.append(title);
+            const tags = (item.when?.platforms ?? []).filter((p) => sel.platforms.includes(p));
+            if (tags.length) {
+              const tagWrap = el('span', 'ml-2 inline-flex flex-wrap gap-1 align-middle');
+              tags.forEach((p) => tagWrap.append(el('span', 'rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-semibold text-indigo-700', platformLabel.get(p) ?? p)));
+              titleWrap.append(tagWrap);
+            }
+            label.append(cb, titleWrap);
+
+            const dl = el('dl', 'mt-3 grid gap-2 pl-8 text-sm sm:grid-cols-[auto_1fr] sm:gap-x-3');
+            dl.append(
+              el('dt', 'font-semibold text-slate-500', '確認方法'),
+              el('dd', 'leading-relaxed text-slate-700', item.how),
+              el('dt', 'font-semibold text-rose-600', 'NG例'),
+              el('dd', 'leading-relaxed text-slate-700', item.ng),
+            );
+            li.append(label, dl);
+            ul.append(li);
+          }
+          sec.append(head, ul);
+          return sec;
+        }),
+      );
+      updateProgress();
+    }
+
+    const state = load();
+    checked = new Set(state.checked);
+    applySelection(state.selection);
+    render();
+
+    form.addEventListener('change', () => {
+      save();
+      render();
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      const md = toMarkdown(readSelection(), sections, checked);
+      try {
+        await navigator.clipboard.writeText(md);
+        copyStatus.textContent = 'コピーしました。NotionやGitHubのissueにそのまま貼れます';
+      } catch {
+        copyStatus.textContent = 'コピーできませんでした';
+      }
+      setTimeout(() => (copyStatus.textContent = ''), 3000);
+    });
+    $('print-btn').addEventListener('click', () => window.print());
+    $('reset-btn').addEventListener('click', () => {
+      checked = new Set();
+      save();
+      render();
+    });
+  </script>
+</BaseLayout>
