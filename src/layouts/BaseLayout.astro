@@ -14,6 +14,7 @@ const nav = [
   { href: '/blog/', label: '記事' },
 ];
 const path = Astro.url.pathname;
+const canonical = Astro.site ? new URL(path, Astro.site).href : undefined;
 ---
 
 <!doctype html>
@@ -41,6 +42,8 @@ const path = Astro.url.pathname;
     <meta property="og:site_name" content={SITE.name} />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:site" content={`@${SITE.x}`} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {SITE.googleSiteVerification && <meta name="google-site-verification" content={SITE.googleSiteVerification} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <slot name="head" />
   </head>
