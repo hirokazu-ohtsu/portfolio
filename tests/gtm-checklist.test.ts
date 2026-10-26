@@ -161,6 +161,11 @@ describe('Yahoo!広告', () => {
     expect(r).not.toContain('yahoo-new-tags');
   });
 
+  it('検索広告で電話・LINEクリックを選ぶとオンクリックイベントタグの項目が出る', () => {
+    expect(ids({ ...y(true, false, 'new'), events: ['contact_click'] })).toContain('yahoo-phone-click');
+    expect(ids({ ...y(false, true, 'new'), events: ['contact_click'] })).not.toContain('yahoo-phone-click');
+  });
+
   it('タグ受信と成果の計上は別項目', () => {
     expect(ids(y(true, true, 'new'))).toEqual(expect.arrayContaining(['yahoo-received', 'yahoo-cv-recorded']));
   });
