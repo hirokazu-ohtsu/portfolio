@@ -34,6 +34,31 @@ const box = 'inline-flex items-start gap-2 rounded-lg px-3 py-2 ring-1 ring-slat
         </div>
       </fieldset>
 
+      <fieldset id="yahoo-options" class="hidden rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
+        <legend class="sr-only">Yahoo!広告の設定</legend>
+        <p class="text-sm font-semibold">Yahoo!広告：計測する広告の種類</p>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <label class={box}><input type="checkbox" id="yahoo_search" class="mt-1 h-4 w-4 accent-indigo-600" />検索広告</label>
+          <label class={box}><input type="checkbox" id="yahoo_display" class="mt-1 h-4 w-4 accent-indigo-600" />ディスプレイ広告</label>
+        </div>
+        <div id="yahoo-display-tag" class="mt-4">
+          <p class="text-sm font-semibold">ディスプレイ広告で使うタグ</p>
+          <div class="mt-2 grid gap-2">
+            <label class={box}>
+              <input type="radio" name="yahoo_display_tag" value="new" class="mt-1 h-4 w-4 accent-indigo-600" />
+              <span>計測タグ（グローバルスニペット＋イベントスニペット）<span class="block text-xs text-slate-500">新しく設定するならこちらが推奨</span></span>
+            </label>
+            <label class={box}>
+              <input type="radio" name="yahoo_display_tag" value="legacy" class="mt-1 h-4 w-4 accent-indigo-600" />
+              <span>従来の構成（サイトジェネラルタグ＋コンバージョン測定タグ）<span class="block text-xs text-slate-500">既存の設定を点検する場合など</span></span>
+            </label>
+          </div>
+        </div>
+        <p class="mt-3 text-xs leading-relaxed text-slate-500">
+          通常の検索広告は計測タグを使ったコンバージョン測定ができないため、従来の構成でチェックします（{checkedOnJa}時点）。検索広告（ショッピング）は今後対応予定です。
+        </p>
+      </fieldset>
+
       <fieldset>
         <legend class="text-sm font-semibold">計測したいイベント</legend>
         <div class="mt-2 grid gap-2 sm:grid-cols-2">
@@ -104,7 +129,7 @@ const box = 'inline-flex items-start gap-2 rounded-lg px-3 py-2 ring-1 ring-slat
   </main>
 
   <script>
-    import { generateChecklist, PLATFORMS, sanitizeSelection, toMarkdown, type ChecklistSection, type Selection } from '../../lib/gtm-checklist';
+    import { DEFAULT_YAHOO, generateChecklist, PLATFORMS, sanitizeSelection, toMarkdown, type ChecklistSection, type Selection } from '../../lib/gtm-checklist';
 
     const STORAGE_KEY = 'gtm-checklist-state';
     const DEFAULT_SELECTION: Selection = { platforms: ['ga4', 'google_ads'], events: ['page_view', 'lead'], conditions: [] };
@@ -140,18 +165,38 @@ const box = 'inline-flex items-start gap-2 rounded-lg px-3 py-2 ring-1 ring-slat
       } catch { /* 保存できない環境では何もしない */ }
     }
 
+    const yahooSearch = $<HTMLInputElement>('yahoo_search');
+    const yahooDisplay = $<HTMLInputElement>('yahoo_display');
+    const LIST_NAMES = ['platforms', 'events', 'conditions'] as const;
+
     const readSelection = (): Selection =>
       sanitizeSelection({
         platforms: [...form.querySelectorAll<HTMLInputElement>('input[name="platforms"]:checked')].map((i) => i.value),
         events: [...form.querySelectorAll<HTMLInputElement>('input[name="events"]:checked')].map((i) => i.value),
         conditions: [...form.querySelectorAll<HTMLInputElement>('input[name="conditions"]:checked')].map((i) => i.value),
+        yahoo: {
+          search: yahooSearch.checked,
+          display: yahooDisplay.checked,
+          displayTag: form.querySelector<HTMLInputElement>('input[name="yahoo_display_tag"]:checked')?.value ?? 'new',
+        },
       });
 
     function applySelection(sel: Selection) {
-      for (const input of form.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
-        const list = sel[input.name as keyof Selection] as string[];
-        input.checked = list.includes(input.value);
+      for (const name of LIST_NAMES) {
+        for (const input of form.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)) {
+          input.checked = (sel[name] as string[]).includes(input.value);
+        }
       }
+      const y = sel.yahoo ?? DEFAULT_YAHOO;
+      yahooSearch.checked = y.search;
+      yahooDisplay.checked = y.display;
+      for (const r of form.querySelectorAll<HTMLInputElement>('input[name="yahoo_display_tag"]')) r.checked = r.value === y.displayTag;
+    }
+
+    // Yahoo!広告を選んだときだけ追加の選択を出す
+    function updateYahooOptions(sel: Selection) {
+      $('yahoo-options').classList.toggle('hidden', !sel.platforms.includes('yahoo'));
+      $('yahoo-display-tag').classList.toggle('hidden', !(sel.yahoo ?? DEFAULT_YAHOO).display);
     }
 
     function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string) {
@@ -175,6 +220,7 @@ const box = 'inline-flex items-start gap-2 rounded-lg px-3 py-2 ring-1 ring-slat
 
     function render() {
       const sel = readSelection();
+      updateYahooOptions(sel);
       sections = generateChecklist(sel);
 
       if (!sections.length) {

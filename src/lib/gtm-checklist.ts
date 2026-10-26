@@ -6,6 +6,25 @@ export type EventKind = 'page_view' | 'purchase' | 'lead' | 'sign_up' | 'add_to_
 export type Condition = 'spa' | 'cmp' | 'metaCapi';
 export type Stage = 'before' | 'during' | 'prepublish' | 'after';
 
+/** Yahoo!広告を選んだときの追加の選択 */
+export interface YahooOptions {
+  search: boolean;
+  display: boolean;
+  /** ディスプレイ広告で使うタグ。通常の検索広告は計測タグの対象外なので従来の構成のみ */
+  displayTag: 'new' | 'legacy';
+}
+/** YahooOptions から導く絞り込み用のフラグ */
+export type YahooFlag = 'search' | 'display' | 'legacy' | 'newTag';
+
+export const DEFAULT_YAHOO: YahooOptions = { search: true, display: true, displayTag: 'new' };
+
+export function yahooFlags(y: YahooOptions): YahooFlag[] {
+  const f = new Set<YahooFlag>();
+  if (y.search) { f.add('search'); f.add('legacy'); }
+  if (y.display) { f.add('display'); f.add(y.displayTag === 'new' ? 'newTag' : 'legacy'); }
+  return [...f];
+}
+
 export const PLATFORMS: { id: Platform; label: string }[] = [
   { id: 'ga4', label: 'GA4' },
   { id: 'google_ads', label: 'Google広告' },
@@ -52,6 +71,8 @@ export interface ChecklistItem {
     conditions?: Condition[];
     /** どれか1つでも満たすと表示しない */
     unless?: Condition[];
+    /** Yahoo!広告の選択で絞る。どれか1つに当てはまれば表示 */
+    yahoo?: YahooFlag[];
   };
   /** 裏取りに使った出典（SOURCES の id） */
   sources?: string[];
@@ -76,7 +97,15 @@ export const SOURCES: Source[] = [
   { id: 'gtm-consent', title: '同意モードとタグの同意設定（タグ マネージャー ヘルプ）', url: 'https://support.google.com/tagmanager/answer/10718549' },
   { id: 'gtm-publish', title: '公開とバージョン（タグ マネージャー ヘルプ）', url: 'https://support.google.com/tagmanager/answer/2699097' },
   { id: 'meta-dedup', title: 'Meta Pixel と Conversions API の重複イベントの処理（Meta for Developers）', url: 'https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events' },
-  { id: 'yahoo-cv-tags', title: 'コンバージョン測定で設置が必要なタグについて（LINEヤフー広告 ヘルプ）', url: 'https://ads-help.yahoo-net.jp/s/article/H000044505?language=ja' },
+  { id: 'yahoo-help-tags', title: 'コンバージョン測定で設置が必要なタグについて（LINEヤフー広告 ヘルプ）', url: 'https://ads-help.yahoo-net.jp/s/article/H000044505?language=ja' },
+  { id: 'yahoo-help-sgt', title: 'サイトジェネラルタグについて（LINEヤフー広告 ヘルプ）', url: 'https://ads-help.yahoo-net.jp/s/article/H000044574?language=ja' },
+  { id: 'yahoo-help-hokan', title: 'コンバージョン測定の補完機能について（LINEヤフー広告 ヘルプ）', url: 'https://ads-help.yahoo-net.jp/s/article/H000044650?language=ja' },
+  { id: 'yahoo-help-measure', title: '計測タグについて（LINEヤフー広告 ヘルプ）', url: 'https://ads-help.yahoo-net.jp/s/article/H000054772?language=ja' },
+  { id: 'yahoo-help-measure-set', title: '計測タグの発行と取得、設置について（LINEヤフー広告 ヘルプ）', url: 'https://ads-help.yahoo-net.jp/s/article/H000054773?language=ja' },
+  { id: 'yahoo-help-faq', title: '検索広告とディスプレイ広告で同じコンバージョン測定タグを利用できますか（LINEヤフー広告 ヘルプ）', url: 'https://ads-help.yahoo-net.jp/s/article/H000044716?language=ja' },
+  { id: 'yahoo-display-cv', title: 'ディスプレイ広告のコンバージョン測定の設定方法（LINEヤフー for Business）', url: 'https://www.lycbiz.com/jp/column/ly-ads/displayads-auc/marketing/conversion-analytics/' },
+  { id: 'yahoo-shopping-tag', title: '検索広告（ショッピング）で計測タグ・コンバージョンAPIに対応（LINEヤフー for Business、2026年8月）', url: 'https://www.lycbiz.com/jp/news/ly-ads/20260818-01/' },
+  { id: 'yahoo-legacy-end', title: '従来版コンバージョン測定タグの新規作成終了について（LINEヤフー for Business、2026年9月）', url: 'https://www.lycbiz.com/jp/news/ly-ads/20260917/' },
   { id: 'yahoo-new-tag', title: 'ディスプレイ広告で計測タグと新しいコンバージョンAPIの提供開始（LINEヤフー for Business、2025年6月）', url: 'https://www.lycbiz.com/jp/news/yahoo-ads/20250623' },
   { id: 'line-tag', title: 'LINE Tagの概要と設置の確認（LINEヤフー for Business マニュアル）', url: 'https://www.lycbiz.com/jp/manual/line-ads/tracking_001/' },
 ];
@@ -129,13 +158,31 @@ export const ITEMS: ChecklistItem[] = [
     when: { platforms: ['meta'] },
   },
   {
-    id: 'id-yahoo',
+    id: 'yahoo-plan',
     stage: 'before',
-    title: 'Yahoo!広告で使うタグの種類と設定値を確認する',
-    how: '検索広告とディスプレイ広告のどちらで計測するか、従来のタグ（サイトジェネラルタグ＋コンバージョン測定タグ）と新しい計測タグのどちらを使うかを決め、管理画面から設定値を控える。',
-    ng: '検索広告とディスプレイ広告の設定値を取り違え、片方の成果が計測されない。',
+    title: '広告の種類ごとに、タグの構成と測るイベントを決める',
+    how: '検索広告は従来の構成（サイトジェネラルタグ＋コンバージョン測定タグ）、ディスプレイ広告は計測タグか従来の構成かを決める。どのイベントをどのコンバージョン設定で測るかを一覧にし、管理画面から設定値を控える。',
+    ng: '検索広告とディスプレイ広告のコンバージョン測定タグを取り違える（アカウントが別なので、コンバージョン測定もそれぞれのアカウントで設定する）。',
     when: { platforms: ['yahoo'] },
-    sources: ['yahoo-cv-tags', 'yahoo-new-tag'],
+    sources: ['yahoo-help-faq', 'yahoo-help-measure', 'yahoo-new-tag'],
+  },
+  {
+    id: 'yahoo-autotag',
+    stage: 'before',
+    title: '補完機能を使うなら、自動タグ設定をオンにする',
+    how: '従来の構成で補完機能（ブラウザーのセキュリティ強化への対策）を使う場合は、広告アカウントの自動タグ設定が「設定する」になっているか確認する。ディスプレイ広告で、アカウント作成時の国が「日本」以外のアカウントは自動タグ設定を使えない。',
+    ng: '補完機能タグを入れただけで、自動タグ設定がオフのまま。',
+    when: { platforms: ['yahoo'], yahoo: ['legacy'] },
+    sources: ['yahoo-help-hokan', 'yahoo-help-tags'],
+  },
+  {
+    id: 'yahoo-yclid',
+    stage: 'before',
+    title: 'クリック後のURLに yclid が残るか確認する',
+    how: '広告をクリックして表示されたページのアドレスバーに yclid=… が付いているか確認する。他社のトラッキングツールでリダイレクトする場合や、別ドメインをまたぐ場合は、成果ページ側まで yclid を引き継げるか確認する。',
+    ng: '計測用のリダイレクトで yclid が落ち、補完機能が働かない。',
+    when: { platforms: ['yahoo'], yahoo: ['legacy'] },
+    sources: ['yahoo-help-hokan'],
   },
   {
     id: 'id-line',
@@ -290,13 +337,57 @@ export const ITEMS: ChecklistItem[] = [
     sources: ['meta-dedup'],
   },
   {
-    id: 'yahoo-tags',
+    id: 'yahoo-legacy-tags',
     stage: 'during',
-    title: 'Yahoo!広告のタグを決めた構成どおりに設置する',
-    how: '従来のタグを使う場合は、サイトジェネラルタグを全ページに、コンバージョン測定タグを成果ページ（または成果イベント）に設置する。',
-    ng: 'コンバージョン測定タグだけ入れて、全ページ用のタグが入っていない。',
+    title: '従来の構成：サイトジェネラルタグを全ページ、コンバージョン測定タグを成果時に発火させる',
+    how: 'サイトジェネラルタグ（補完機能を使う場合は「サイトジェネラルタグ・コンバージョン測定補完機能タグ」）を全ページで最初に、コンバージョン測定タグをその後に成果ページや成果イベントで発火させる。サイトジェネラルタグは検索広告とディスプレイ広告で共通なので1ページに1つでよいが、コンバージョン測定タグは広告ごとに必要。',
+    ng: 'サイトジェネラルタグがなく、コンバージョン測定タグが実行されない。または、補完機能を後から足すときに補完機能タグだけを追加している（サイトジェネラルタグごと貼り替える）。',
+    when: { platforms: ['yahoo'], yahoo: ['legacy'] },
+    sources: ['yahoo-help-tags', 'yahoo-help-sgt', 'yahoo-help-hokan'],
+  },
+  {
+    id: 'yahoo-new-tags',
+    stage: 'during',
+    title: '計測タグ：グローバルスニペットを全ページ、イベントスニペットを成果時に発火させる',
+    how: 'グローバルスニペットは全ページで最初に、イベントスニペットは成果のページやイベントで、グローバルスニペットより後に動くようにする。計測タグは補完機能を備えているので補完機能タグは不要。グローバルスニペットのローカルストレージとファーストパーティーCookieのオプションも確認する。',
+    ng: 'グローバルスニペットが1ページに2つある（複数は設置できない）。またはイベントスニペットが先に動いている。',
+    when: { platforms: ['yahoo'], yahoo: ['newTag'] },
+    sources: ['yahoo-help-measure', 'yahoo-help-measure-set', 'yahoo-help-hokan'],
+  },
+  {
+    id: 'yahoo-no-mix',
+    stage: 'during',
+    title: '同じ成果を従来のタグと計測タグの両方で測らない',
+    how: '計測タグに切り替えるときは、同じ成果を測っている従来のコンバージョン測定タグを止めるか、対象を分ける。',
+    ng: '従来のタグと計測タグを同じページに置き、同じ成果が二重に計上される。',
+    when: { platforms: ['yahoo'], yahoo: ['newTag'] },
+    sources: ['yahoo-shopping-tag'],
+  },
+  {
+    id: 'yahoo-phone-click',
+    stage: 'during',
+    title: '検索広告の電話発信コンバージョンにはオンクリックイベントタグも設置する',
+    how: '検索広告で電話発信コンバージョンを測る場合は、サイトジェネラルタグとコンバージョン測定タグに加えて、オンクリックイベントタグを設置する。',
+    ng: '電話番号リンクのクリックを、通常のコンバージョン測定タグだけで測ろうとしている。',
+    when: { platforms: ['yahoo'], events: ['contact_click'], yahoo: ['search'] },
+    sources: ['yahoo-help-tags'],
+  },
+  {
+    id: 'yahoo-gtm-setup',
+    stage: 'during',
+    title: 'GTMのタグの種類・トリガー・変数を確認する',
+    how: 'GTMにYahoo!広告用のタグの種類（テンプレート）があれば使い、設定項目が管理画面の値と合っているか確認する。カスタムHTMLで入れる場合は、発火の順番と、同じタグが重複していないかを確認する。',
+    ng: 'カスタムHTMLと直書きの両方に同じタグがあり、成果が二重に送られる。',
     when: { platforms: ['yahoo'] },
-    sources: ['yahoo-cv-tags'],
+  },
+  {
+    id: 'yahoo-transaction-id',
+    stage: 'during',
+    title: '購入の成果に取引IDを設定する',
+    how: '購入のコンバージョンに、注文ごとに一意の取引ID（計測タグでは transaction_id）を変数で渡し、重複した計上を防ぐ。',
+    ng: '取引IDを渡しておらず、完了ページの再読み込みで購入が重複して計上される。',
+    when: { platforms: ['yahoo'], events: ['purchase'] },
+    sources: ['yahoo-shopping-tag'],
   },
   {
     id: 'line-tags',
@@ -412,6 +503,14 @@ export const ITEMS: ChecklistItem[] = [
     sources: ['gads-tag-assistant'],
   },
   {
+    id: 'yahoo-preview',
+    stage: 'prepublish',
+    title: 'プレビューで全ページ用タグと成果用タグの発火を確認する',
+    how: 'GTMのプレビューで、全ページ用のタグ（サイトジェネラルタグまたはグローバルスニペット）が先に、成果用のタグが成果のときに1回だけ発火するか確認する。',
+    ng: '成果用のタグが全ページ用のタグより先に発火している。',
+    when: { platforms: ['yahoo'] },
+  },
+  {
     id: 'meta-test-events',
     stage: 'prepublish',
     title: 'Metaのイベントマネージャの「イベントをテスト」で受信を確認する',
@@ -473,12 +572,22 @@ export const ITEMS: ChecklistItem[] = [
     when: { platforms: ['meta'] },
   },
   {
-    id: 'receive-yahoo',
+    id: 'yahoo-received',
     stage: 'after',
-    title: 'Yahoo!広告の管理画面で計測状況を確認する',
-    how: '管理画面のコンバージョン測定の一覧で、タグの状態や成果の計上を確認する。',
-    ng: 'GTMでは成功しているのに、Yahoo!広告側では成果がゼロのまま。',
+    title: 'タグの受信を管理画面で確認する',
+    how: '計測タグは「イベント受信履歴」、従来の構成は「コンバージョン測定」の画面で、タグからのデータが届いているか確認する。設置直後は反映まで時間がかかることがある。',
+    ng: 'GTMで発火したことだけ確認し、Yahoo!広告側の受信を見ていない。',
     when: { platforms: ['yahoo'] },
+    sources: ['yahoo-display-cv', 'yahoo-help-measure'],
+  },
+  {
+    id: 'yahoo-cv-recorded',
+    stage: 'after',
+    title: '成果が実際に計上されているか、数日後に確認する',
+    how: 'タグの受信とは別に、コンバージョン測定の画面で広告経由の成果が計上されているかを確認する。テスト直後は反映されないことがあるので、日をおいて見る。',
+    ng: 'タグは届いているのに、自動タグ設定やリダイレクトの問題で成果が計上されていない。',
+    when: { platforms: ['yahoo'] },
+    sources: ['yahoo-display-cv'],
   },
   {
     id: 'receive-line',
@@ -527,6 +636,8 @@ export interface Selection {
   platforms: Platform[];
   events: EventKind[];
   conditions: Condition[];
+  /** 省略時は DEFAULT_YAHOO */
+  yahoo?: YahooOptions;
 }
 
 export interface ChecklistSection {
@@ -545,6 +656,7 @@ export function isApplicable(item: ChecklistItem, sel: Selection): boolean {
   if (!anyOf(w.events, sel.events)) return false;
   if (w.conditions && !w.conditions.every((c) => sel.conditions.includes(c))) return false;
   if (w.unless && w.unless.some((c) => sel.conditions.includes(c))) return false;
+  if (!anyOf(w.yahoo, yahooFlags(sel.yahoo ?? DEFAULT_YAHOO))) return false;
   return true;
 }
 
@@ -562,6 +674,13 @@ export function generateChecklist(sel: Selection): ChecklistSection[] {
 const labelOf = <T extends string>(list: { id: T; label: string }[], ids: T[]) =>
   list.filter((x) => ids.includes(x.id)).map((x) => x.label);
 
+export function yahooLabel(y: YahooOptions): string {
+  const parts: string[] = [];
+  if (y.search) parts.push('検索広告（従来の構成）');
+  if (y.display) parts.push(`ディスプレイ広告（${y.displayTag === 'new' ? '計測タグ' : '従来の構成'}）`);
+  return parts.join('、') || '広告の種類が未選択';
+}
+
 /** チェックリストをMarkdownにする。checked に入っている項目は [x] になる。 */
 export function toMarkdown(sel: Selection, sections: ChecklistSection[], checked: ReadonlySet<string> = new Set()): string {
   const lines: string[] = ['# GTMタグ設定チェックリスト', ''];
@@ -569,10 +688,13 @@ export function toMarkdown(sel: Selection, sections: ChecklistSection[], checked
   lines.push(`- イベント: ${labelOf(EVENTS, sel.events).join('、') || 'なし'}`);
   const conds = labelOf(CONDITIONS, sel.conditions);
   if (conds.length) lines.push(`- 条件: ${conds.join('、')}`);
+  if (sel.platforms.includes('yahoo')) lines.push(`- Yahoo!広告: ${yahooLabel(sel.yahoo ?? DEFAULT_YAHOO)}`);
   for (const s of sections) {
     lines.push('', `## ${s.label}（${s.summary}）`, '');
     for (const i of s.items) {
-      lines.push(`- [${checked.has(i.id) ? 'x' : ' '}] ${i.title}`);
+      const tags = labelOf(PLATFORMS, (i.when?.platforms ?? []).filter((p) => sel.platforms.includes(p)));
+      const prefix = tags.length ? `【${tags.join('・')}】` : '';
+      lines.push(`- [${checked.has(i.id) ? 'x' : ' '}] ${prefix}${i.title}`);
       lines.push(`  - 確認方法: ${i.how}`);
       lines.push(`  - NG例: ${i.ng}`);
     }
@@ -589,5 +711,16 @@ export function sanitizeSelection(raw: unknown): Selection {
     platforms: pick(o.platforms, PLATFORMS),
     events: pick(o.events, EVENTS),
     conditions: pick(o.conditions, CONDITIONS),
+    yahoo: sanitizeYahoo(o.yahoo),
+  };
+}
+
+function sanitizeYahoo(raw: unknown): YahooOptions {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_YAHOO };
+  const y = raw as Record<string, unknown>;
+  return {
+    search: typeof y.search === 'boolean' ? y.search : DEFAULT_YAHOO.search,
+    display: typeof y.display === 'boolean' ? y.display : DEFAULT_YAHOO.display,
+    displayTag: y.displayTag === 'legacy' ? 'legacy' : 'new',
   };
 }

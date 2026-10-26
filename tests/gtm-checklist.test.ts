@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CONDITIONS, EVENTS, generateChecklist, isApplicable, ITEMS, PLATFORMS, sanitizeSelection, SOURCES, STAGES, toMarkdown,
+  CONDITIONS, DEFAULT_YAHOO, EVENTS, generateChecklist, isApplicable, ITEMS, PLATFORMS, sanitizeSelection, SOURCES, STAGES, toMarkdown, yahooFlags,
   type Selection,
 } from '../src/lib/gtm-checklist';
 
@@ -125,7 +125,64 @@ describe('toMarkdown', () => {
 describe('sanitizeSelection', () => {
   it('未知の値や壊れたデータを取り除く', () => {
     expect(sanitizeSelection({ platforms: ['ga4', 'tiktok'], events: 'purchase', conditions: ['spa'] }))
-      .toEqual({ platforms: ['ga4'], events: [], conditions: ['spa'] });
-    expect(sanitizeSelection(null)).toEqual({ platforms: [], events: [], conditions: [] });
+      .toEqual({ platforms: ['ga4'], events: [], conditions: ['spa'], yahoo: DEFAULT_YAHOO });
+    expect(sanitizeSelection(null)).toEqual({ platforms: [], events: [], conditions: [], yahoo: DEFAULT_YAHOO });
+    expect(sanitizeSelection({ yahoo: { search: false, display: 'x', displayTag: 'legacy' } }).yahoo)
+      .toEqual({ search: false, display: true, displayTag: 'legacy' });
+  });
+});
+
+describe('Yahoo!広告', () => {
+  const y = (search: boolean, display: boolean, displayTag: 'new' | 'legacy'): Selection =>
+    ({ platforms: ['yahoo'], events: ['lead'], conditions: [], yahoo: { search, display, displayTag } });
+
+  it('yahooFlags: 検索広告は常に従来の構成', () => {
+    expect(yahooFlags({ search: true, display: false, displayTag: 'new' }).sort()).toEqual(['legacy', 'search']);
+    expect(yahooFlags({ search: false, display: true, displayTag: 'new' }).sort()).toEqual(['display', 'newTag']);
+    expect(yahooFlags({ search: true, display: true, displayTag: 'new' }).sort()).toEqual(['display', 'legacy', 'newTag', 'search']);
+  });
+
+  it('検索×従来：サイトジェネラルタグと自動タグ設定が出て、計測タグの項目は出ない', () => {
+    const r = ids(y(true, false, 'new'));
+    expect(r).toEqual(expect.arrayContaining(['yahoo-plan', 'yahoo-autotag', 'yahoo-legacy-tags', 'yahoo-received', 'yahoo-cv-recorded']));
+    expect(r).not.toContain('yahoo-new-tags');
+  });
+
+  it('ディスプレイ×計測タグ：スニペットと新旧併用の項目が出て、従来の項目は出ない', () => {
+    const r = ids(y(false, true, 'new'));
+    expect(r).toEqual(expect.arrayContaining(['yahoo-new-tags', 'yahoo-no-mix']));
+    expect(r).not.toContain('yahoo-legacy-tags');
+    expect(r).not.toContain('yahoo-autotag');
+  });
+
+  it('ディスプレイ×従来：従来の項目だけ', () => {
+    const r = ids(y(false, true, 'legacy'));
+    expect(r).toContain('yahoo-legacy-tags');
+    expect(r).not.toContain('yahoo-new-tags');
+  });
+
+  it('検索広告で電話・LINEクリックを選ぶとオンクリックイベントタグの項目が出る', () => {
+    expect(ids({ ...y(true, false, 'new'), events: ['contact_click'] })).toContain('yahoo-phone-click');
+    expect(ids({ ...y(false, true, 'new'), events: ['contact_click'] })).not.toContain('yahoo-phone-click');
+  });
+
+  it('タグ受信と成果の計上は別項目', () => {
+    expect(ids(y(true, true, 'new'))).toEqual(expect.arrayContaining(['yahoo-received', 'yahoo-cv-recorded']));
+  });
+
+  it('取引IDは購入を選んだときだけ', () => {
+    expect(ids(y(true, false, 'new'))).not.toContain('yahoo-transaction-id');
+    expect(ids({ ...y(true, false, 'new'), events: ['purchase'] })).toContain('yahoo-transaction-id');
+  });
+
+  it('Yahoo!を選んでいなければYahoo!の項目は出ない', () => {
+    expect(ids({ ...y(true, true, 'new'), platforms: ['ga4'] }).some((i) => i.startsWith('yahoo'))).toBe(false);
+  });
+
+  it('Markdownに広告の種類とタグの構成を書く', () => {
+    const sel = y(true, true, 'new');
+    const md = toMarkdown(sel, generateChecklist(sel));
+    expect(md).toContain('- Yahoo!広告: 検索広告（従来の構成）、ディスプレイ広告（計測タグ）');
+    expect(md).toContain('- [ ] 【Yahoo!広告】タグの受信を管理画面で確認する');
   });
 });
