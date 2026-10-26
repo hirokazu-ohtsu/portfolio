@@ -9,5 +9,5 @@ export const SITE = {
   // 独自ドメインを付けたらここに追加する
   analyticsHosts: ['portfolio.kazucchi1016.workers.dev'],
   // Search Console の所有権確認用（HTMLタグの content の値）。空なら出力しない
-  googleSiteVerification: '',
+  googleSiteVerification: 'dFdCjarHJj2hZG3BiMXRpXRdPwKU-QVPa0xm73P24RE',
 };
